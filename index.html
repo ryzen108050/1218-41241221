@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代辦事項管理</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        form {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: inline-block;
+            width: 100px;
+            margin-bottom: 10px;
+        }
+
+        input, select {
+            padding: 5px;
+            margin-bottom: 10px;
+        }
+
+        button {
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        #response, #todos {
+            background-color: #f9f9f9;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 20px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        .update-btn, .delete-btn {
+            cursor: pointer;
+            color: blue;
+            text-decoration: underline;
+            margin-left: 10px;
+        }
+
+        .delete-btn {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>代辦事項管理</h1>
+
+    <!-- 新增代辦事項表單 -->
+    <form id="todo-form">
+        <label for="student-id">學生 ID：</label>
+        <input type="text" id="student-id" name="student_id" required>
+        <br>
+        <label for="task">代辦事項：</label>
+        <input type="text" id="task" name="task" required>
+        <br>
+        <button type="submit">新增</button>
+    </form>
+
+    <div id="response" class="hidden">
+        <h2>新增成功！</h2>
+        <p><strong>ID：</strong> <span id="todo-id"></span></p>
+        <p><strong>代辦事項：</strong> <span id="todo-task"></span></p>
+        <p><strong>完成狀態：</strong> <span id="todo-completed"></span></p>
+    </div>
+
+    <hr>
+
+    <!-- 獲取代辦事項 -->
+    <form id="fetch-form">
+        <label for="fetch-student-id">學生 ID：</label>
+        <input type="text" id="fetch-student-id" name="student_id" required>
+        <br>
+        <button type="submit">獲取代辦事項</button>
+    </form>
+
+    <div id="todos" class="hidden">
+        <h2>代辦事項列表</h2>
+        <ul id="todos-list"></ul>
+    </div>
+
+    <hr>
+
+    <!-- 更新代辦事項 -->
+    <form id="update-form" class="hidden">
+        <h2>更新代辦事項</h2>
+        <label for="update-id">代辦事項 ID：</label>
+        <input type="text" id="update-id" name="id" required readonly>
+        <br>
+        <label for="update-student-id">學生 ID：</label>
+        <input type="text" id="update-student-id" name="student_id" required>
+        <br>
+        <label for="update-task">代辦事項：</label>
+        <input type="text" id="update-task" name="task" required>
+        <br>
+        <label for="update-completed">完成狀態：</label>
+        <select id="update-completed" name="completed" required>
+            <option value="true">已完成</option>
+            <option value="false">未完成</option>
+        </select>
+        <br>
+        <button type="submit">更新</button>
+    </form>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const todoForm = document.getElementById('todo-form');
+            const fetchForm = document.getElementById('fetch-form');
+            const updateForm = document.getElementById('update-form');
+            const responseDiv = document.getElementById('response');
+            const todosDiv = document.getElementById('todos');
+            const todosList = document.getElementById('todos-list');
+
+            const todoId = document.getElementById('todo-id');
+            const todoTask = document.getElementById('todo-task');
+            const todoCompleted = document.getElementById('todo-completed');
+
+            const updateId = document.getElementById('update-id');
+            const updateStudentId = document.getElementById('update-student-id');
+            const updateTask = document.getElementById('update-task');
+            const updateCompleted = document.getElementById('update-completed');
+
+            // 新增代辦事項
+            todoForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const studentId = document.getElementById('student-id').value;
+                const task = document.getElementById('task').value;
+
+                const requestBody = {
+                    student_id: studentId,
+                    task: task
+                };
+
+                try {
+                    const response = await fetch('https://nfutest.pythonanywhere.com/todos', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody),
+                    });
+
+                    if (response.status === 201) {
+                        const data = await response.json();
+                        todoId.textContent = data.id;
+                        todoTask.textContent = data.task;
+                        todoCompleted.textContent = data.completed ? '已完成' : '未完成';
+
+                        responseDiv.classList.remove('hidden');
+                    } else {
+                        alert('新增代辦事項失敗，請稍後再試。');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('發生錯誤，請檢查您的網路連線。');
+                }
+            });
+
+            // 獲取代辦事項
+            fetchForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const studentId = document.getElementById('fetch-student-id').value;
+
+                try {
+                    const response = await fetch(`https://nfutest.pythonanywhere.com/todos?student_id=${studentId}`, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    });
+
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        todosList.innerHTML = ''; // 清空列表
+                        data.todos.forEach((todo) => {
+                            const listItem = document.createElement('li');
+                            listItem.textContent = `ID: ${todo.id}, 任務: ${todo.task}, 完成: ${todo.completed ? '是' : '否'}`;
+                            
+                            const updateButton = document.createElement('span');
+                            updateButton.textContent = '更新';
+                            updateButton.classList.add('update-btn');
+                            updateButton.addEventListener('click', () => {
+                                updateId.value = todo.id;
+                                updateStudentId.value = todo.student_id || studentId;
+                                updateTask.value = todo.task;
+                                updateCompleted.value = todo.completed;
+                                updateForm.classList.remove('hidden');
+                            });
+
+                            const deleteButton = document.createElement('span');
+                            deleteButton.textContent = '刪除';
+                            deleteButton.classList.add('delete-btn');
+                            deleteButton.addEventListener('click', () => deleteTodo(todo.id, studentId, listItem));
+
+                            listItem.appendChild(updateButton);
+                            listItem.appendChild(deleteButton);
+                            todosList.appendChild(listItem);
+                        });
+
+                        todosDiv.classList.remove('hidden');
+                    } else {
+                        alert('獲取代辦事項失敗，請稍後再試。');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('發生錯誤，請檢查您的網路連線。');
+                }
+            });
+
+            // 更新代辦事項
+            updateForm.addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const id = updateId.value;
+                const studentId = updateStudentId.value;
+                const task = updateTask.value;
+                const completed = updateCompleted.value === 'true';
+
+                const requestBody = {
+                    student_id: studentId,
+                    task: task,
+                    completed: completed
+                };
+
+                try {
+                    const response = await fetch(`https://nfutest.pythonanywhere.com/todos/${id}`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody),
+                    });
+
+                    if (response.status === 200) {
+                        const data = await response.json();
+                        alert(`代辦事項更新成功：ID ${data.id}`);
+                        updateForm.classList.add('hidden');
+                    } else {
+                        alert('更新代辦事項失敗，請稍後再試。');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('發生錯誤，請檢查您的網路連線。');
+                }
+            });
+
+            // 刪除代辦事項
+            async function deleteTodo(id, studentId, listItem) {
+                const requestBody = { student_id: studentId };
+
+                try {
+                    const response = await fetch(`https://nfutest.pythonanywhere.com/todos/${id}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody),
+                    });
+
+                    if (response.status === 200) {
+                        alert('代辦事項已刪除');
+                        listItem.remove(); // 從列表中移除
+                    } else {
+                        alert('刪除代辦事項失敗，請稍後再試。');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('發生錯誤，請檢查您的網路連線。');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
